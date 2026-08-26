@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Cada geração de dieta feita pelo usuário fica registrada aqui.
+// Guardamos os dados que o usuário informou no formulário + o
+// resultado final gerado pela IA (texto em markdown), para
+// permitir histórico, auditoria e futuras features (ex: listar
+// dietas antigas de um usuário).
+model DietPlan {
+  id Int @id @default(autoincrement())
+
+  // Dados informados no formulário (mesmos campos do DietPlanRequestSchema)
+  nome            String
+  idade           Int
+  altura_cm       Float
+  peso_kg         Float
+  sexo            String
+  nivel_atividade String
+  objetivo        String
+
+  // Conteúdo em markdown gerado pela IA. Fica null enquanto a
+  // geração ainda está em andamento (stream não terminou) e caso
+  // dê erro no meio da geração.
+  resultado String? @db.Text
+
+  status String @default("gerando") // "gerando" | "concluido" | "erro"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("diet_plans")
+}
