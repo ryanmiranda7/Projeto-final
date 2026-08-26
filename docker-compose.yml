@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dietas
+    ports:
+      - "5432:5432"
+    volumes:
+      - dietas_db_data:/var/lib/postgresql/data
+
+volumes:
+  dietas_db_data:
