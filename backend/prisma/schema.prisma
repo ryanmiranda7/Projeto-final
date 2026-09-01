@@ -24,6 +24,12 @@ model DietPlan {
   nivel_atividade String
   objetivo        String
 
+  // Opcional: calorias que o utilizador gasta diariamente (TDEE),
+  // caso o utilizador saiba e queira informar. Usado para ajustar
+  // a dieta gerada; se não for indicado, a IA estima com base no
+  // resto do perfil.
+  calorias_gasto_diario Int?
+
   // Conteúdo em markdown gerado pela IA. Fica null enquanto a
   // geração ainda está em andamento (stream não terminou) e caso
   // dê erro no meio da geração.
