@@ -35,7 +35,8 @@ export function DietGenerator({data}: { data: DietData }) {
                     peso_kg: data.peso_kg,
                     sexo: data.sexo,
                     nivel_atividade: data.nivel_atividade,
-                    objetivo: data.objetivo
+                    objetivo: data.objetivo,
+                    calorias_gasto_diario: data.calorias_gasto_diario
 
                 }),
 

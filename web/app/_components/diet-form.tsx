@@ -18,6 +18,8 @@ const dietSchema = z.object({
     sexo: z.enum(["masculino", "feminino"], {error: "Selecione o sexo"}),
     nivel_atividade: z.enum(["sedentario", "2x_semana", "4x_semana"], {error: "Selecione o nível de atividade"}),
     objetivo: z.enum(["perda_de_peso", "hipertrofia", "manter_massa_muscular"], {error: "Selecione seu objetivo"}),
+    // Campo opcional: só é validado se o utilizador preencher algo.
+    calorias_gasto_diario: z.number().positive().optional(),
 })
 
 type DietSchemaFormData = z.infer<typeof dietSchema>;
@@ -38,6 +40,7 @@ export function DietForm({onSubmit}: DietFormProps){
             sexo: "" as any,
             nivel_atividade: "" as any,
             objetivo: "" as any,
+            calorias_gasto_diario: undefined,
         },
     })
 
@@ -234,6 +237,31 @@ export function DietForm({onSubmit}: DietFormProps){
                                  )}
                                  />
                             </div>
+
+                            {/* CAMPO OPCIONAL: GASTO CALÓRICO DIÁRIO */}
+                            <FormField
+                             control={form.control}
+                             name="calorias_gasto_diario"
+                             render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Calorias que gasta por dia (opcional)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                        type='number'
+                                        step="any"
+                                          {...form.register("calorias_gasto_diario", {
+                                            setValueAs: (v) => v === "" ? undefined : Number(v),
+                                          })}
+                                          placeholder='Ex: 2200 — deixe em branco se não souber'
+                                        />
+                                    </FormControl>
+                                    <p className='text-xs text-gray-400'>
+                                        Se souber, indique o seu gasto calórico diário (TDEE) para uma dieta mais ajustada. Se não souber, pode deixar em branco.
+                                    </p>
+                                    <FormMessage />
+                                </FormItem>
+                             )}
+                             />
                         </div>
 
                         <Button type="submit" className='w-full mt-2 hover:opacity-90 cursor-pointer gap-2'>
