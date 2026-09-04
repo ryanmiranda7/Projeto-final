@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FileText } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import type { DietWizardFormData } from "./schema";
@@ -33,7 +33,20 @@ interface WizardProps {
 function PerguntaRenderer({ form, step }: { form: UseFormReturn<DietWizardFormData>; step: StepDef }) {
   return (
     <div>
-      <h2 className="text-lg font-bold text-gray-900 mb-1">{step.pergunta}</h2>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="text-lg font-bold text-gray-900">{step.pergunta}</h2>
+        {step.referenciaPdf && (
+          <a
+            href={step.referenciaPdf.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-full whitespace-nowrap"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {step.referenciaPdf.label}
+          </a>
+        )}
+      </div>
       {step.subtexto && <p className="text-gray-500 text-sm mb-3">{step.subtexto}</p>}
 
       <div className={step.subtexto ? "" : "mt-3"}>

@@ -20,6 +20,9 @@ type BaseStep = {
   subtexto?: string;
   // Decide se este passo aparece, com base nos valores atuais do formulário.
   condicao?: (values: DietWizardFormData) => boolean;
+  // Botão ao lado da pergunta que abre um PDF de referência numa nova aba
+  // (ex.: o guia visual de percentual de gordura corporal).
+  referenciaPdf?: { url: string; label: string };
 };
 
 export type RadioStep = BaseStep & {
@@ -155,6 +158,7 @@ export const PERFIL_STEPS: StepDef[] = [
     pergunta: "Vamos estimar sua gordura corporal atual",
     subtexto: "Selecione o físico que mais se assemelha ao seu tipo de corpo",
     field: "perfil_avancado.gordura_corporal_atual",
+    referenciaPdf: { url: "/guia-percentual-gordura-corporal.pdf", label: "Ver guia visual" },
     opcoes: (v) =>
       v.sexo === "feminino"
         ? [
@@ -177,6 +181,7 @@ export const PERFIL_STEPS: StepDef[] = [
     tipo: "radio",
     pergunta: "Selecione sua meta de gordura corporal/físico",
     field: "perfil_avancado.meta_gordura_corporal",
+    referenciaPdf: { url: "/guia-percentual-gordura-corporal.pdf", label: "Ver guia visual" },
     opcoes: (v) =>
       v.sexo === "feminino"
         ? [
