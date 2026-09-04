@@ -7,33 +7,85 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Cada geração de dieta feita pelo usuário fica registrada aqui.
-// Guardamos os dados que o usuário informou no formulário + o
-// resultado final gerado pela IA (texto em markdown), para
-// permitir histórico, auditoria e futuras features (ex: listar
-// dietas antigas de um usuário).
-model DietPlan {
+// Cada pessoa que gera uma dieta fica registada aqui uma única vez.
+// O nome é único: se a mesma pessoa gerar uma nova dieta mais tarde,
+// o registo existente é reaproveitado (e os dados de perfil são
+// atualizados), em vez de se criar um cliente duplicado.
+model Cliente {
   id Int @id @default(autoincrement())
 
-  // Dados informados no formulário (mesmos campos do DietPlanRequestSchema)
-  nome            String
+  nome            String  @unique
+  // Opcional — quando indicado, passa a ser usado (em vez do nome) para
+  // reconhecer o cliente entre gerações, e é o destino do "enviar por
+  // email" do PDF (ver tarefas.md #35/#36). Nomes iguais de pessoas
+  // diferentes deixam de se confundir se cada uma tiver o seu email.
+  email           String? @unique
   idade           Int
   altura_cm       Float
   peso_kg         Float
   sexo            String
   nivel_atividade String
-  objetivo        String
 
-  // Opcional: calorias que o utilizador gasta diariamente (TDEE),
-  // caso o utilizador saiba e queira informar. Usado para ajustar
-  // a dieta gerada; se não for indicado, a IA estima com base no
-  // resto do perfil.
+  // Foto do cliente no momento em que começou a dieta (base64), para
+  // comparar com o resultado mais tarde. Só é guardada na primeira vez
+  // que é enviada — gerações seguintes não a substituem.
+  foto_antes String? @db.Text
+
+  // Lembrete de contactar o cliente a meio do caminho até ao objetivo.
+  // Se null, é calculado automaticamente (metade do tempo entre a criação
+  // da última dieta concluída e a data prevista do objetivo); o
+  // nutricionista pode substituir por uma data manual na aba de clientes.
+  lembrete_contato_data     DateTime?
+  // Quando o nutricionista marcou "já contactei" — o lembrete só volta a
+  // aparecer se lembrete_contato_data for definida de novo depois disto.
+  lembrete_contato_feito_em DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dietas DietPlan[]
+
+  @@map("clientes")
+}
+
+// Cada geração de dieta feita por um cliente fica registada aqui.
+// Guardamos o objetivo e as preferências informadas + o resultado
+// final gerado pela IA (texto em markdown), para permitir histórico,
+// auditoria e futuras features (ex: listar dietas antigas de um cliente).
+model DietPlan {
+  id Int @id @default(autoincrement())
+
+  clienteId Int
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  objetivo String
+
+  // Opcionais, informados pelo utilizador no formulário:
+  // - calorias_gasto_diario: gasto calórico diário (TDEE), se souber;
+  // - deficit_calorico: quanto abaixo do gasto quer ficar (perda de peso);
+  // - superavit_calorico: quanto acima do gasto quer ficar (hipertrofia).
+  // Preenchem-se no máximo um dos dois (défice ou superávit), consoante
+  // o objetivo, mas ambos ficam disponíveis e são sempre opcionais.
   calorias_gasto_diario Int?
+  deficit_calorico      Int?
+  superavit_calorico    Int?
+
+  // Respostas do wizard avançado (objetivos, análise metabólica, metas de
+  // macronutrientes e personalização do plano). Guardado como JSON em vez
+  // de uma coluna por pergunta porque são ~28 campos específicos desta
+  // geração, sem necessidade de serem pesquisáveis individualmente.
+  perfil_avancado Json?
 
   // Conteúdo em markdown gerado pela IA. Fica null enquanto a
   // geração ainda está em andamento (stream não terminou) e caso
   // dê erro no meio da geração.
   resultado String? @db.Text
+
+  // Auditoria leve dos pedidos de alteração já aplicados (PATCH
+  // /plans/:id): array de { pedido, data }. O "resultado" acima é sempre
+  // sobrescrito com a versão mais recente; isto guarda só o histórico dos
+  // pedidos em texto, não versões antigas do plano.
+  historico_edicoes Json?
 
   status String @default("gerando") // "gerando" | "concluido" | "erro"
 
