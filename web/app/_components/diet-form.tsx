@@ -1,6 +1,6 @@
 "use client";
 
-import { z } from 'zod'
+import { useState } from "react";
 import { Card } from '@/components/ui/card'
 import { Sparkles, Utensils } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -9,40 +9,99 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-
-const dietSchema = z.object({
-    nome: z.string().min(2, "O nome é obrigatório"),
-    idade: z.number().int().positive(),
-    altura_cm: z.number().positive(),
-    peso_kg: z.number().positive(),
-    sexo: z.enum(["masculino", "feminino"], {error: "Selecione o sexo"}),
-    nivel_atividade: z.enum(["sedentario", "2x_semana", "4x_semana"], {error: "Selecione o nível de atividade"}),
-    objetivo: z.enum(["perda_de_peso", "hipertrofia", "manter_massa_muscular"], {error: "Selecione seu objetivo"}),
-    // Campo opcional: só é validado se o utilizador preencher algo.
-    calorias_gasto_diario: z.number().positive().optional(),
-})
-
-type DietSchemaFormData = z.infer<typeof dietSchema>;
+import { dietWizardSchema, type DietWizardFormData } from './wizard/schema';
+import { Wizard } from './wizard/Wizard';
 
 interface DietFormProps {
-    onSubmit: (data: DietSchemaFormData) => void
+    onSubmit: (data: DietWizardFormData) => void
 }
 
-export function DietForm({onSubmit}: DietFormProps){
+// Campos do ecrã inicial (dados pessoais + atividade/objetivo). O resto das
+// respostas (secções Objetivos, Análise metabólica, Metas de
+// macronutrientes e Personalização) é recolhido pelo wizard passo-a-passo
+// em ./wizard, dirigido por ./wizard/step-config.ts.
+const CAMPOS_ECRA_INICIAL = [
+    "nome",
+    "email",
+    "idade",
+    "altura_cm",
+    "peso_kg",
+    "sexo",
+    "nivel_atividade",
+    "objetivo",
+] as const;
 
-    const form = useForm<DietSchemaFormData>({
-        resolver: zodResolver(dietSchema),
+export function DietForm({onSubmit}: DietFormProps){
+    const [fase, setFase] = useState<"inicial" | "wizard">("inicial");
+    const [carregandoFoto, setCarregandoFoto] = useState(false);
+
+    const form = useForm<DietWizardFormData>({
+        resolver: zodResolver(dietWizardSchema),
         defaultValues: {
             nome: "",
+            email: undefined,
             idade: undefined,
             altura_cm: undefined,
             peso_kg: undefined,
-            sexo: "" as any,
-            nivel_atividade: "" as any,
-            objetivo: "" as any,
+            sexo: undefined,
+            nivel_atividade: undefined,
+            objetivo: undefined,
             calorias_gasto_diario: undefined,
+            deficit_calorico: undefined,
+            superavit_calorico: undefined,
+            foto_antes: undefined,
+            perfil_avancado: {
+                motivo_principal: undefined,
+                motivo_principal_outro: undefined,
+                gordura_corporal_atual: undefined,
+                meta_gordura_corporal: undefined,
+                peso_meta_kg: undefined,
+                evento_especial: undefined,
+                data_evento: undefined,
+                perfil_ganho_muscular: undefined,
+                perfil_ganho_muscular_outro: undefined,
+                sintomas_testosterona_baixa: [],
+                nivel_estresse: undefined,
+                ritmo_preferido: undefined,
+                dieta_especial: undefined,
+                alergias: [],
+                tentacoes: [],
+                orcamento_semanal: undefined,
+                conforto_cozinha: undefined,
+                prioridade_tempo_variedade: undefined,
+                sensacao_entre_refeicoes: [],
+                sensacao_entre_refeicoes_outro: undefined,
+                riscos_saude: [],
+                riscos_saude_outro: undefined,
+                ingestao_proteina: undefined,
+                alimentos_excluidos: [],
+                almoco_tipico: undefined,
+                almoco_tipico_outro: undefined,
+                jejum_intermitente: undefined,
+                primeira_refeicao: undefined,
+                ultima_refeicao: undefined,
+                refeicoes_dia: [],
+                dia_inicio_plano: undefined,
+                comer_mais_fds: undefined,
+                refeicoes_fora_delivery: { almoco: [], jantar: [] },
+            },
         },
     })
+
+    async function handleContinuar() {
+        const valido = await form.trigger([...CAMPOS_ECRA_INICIAL]);
+        if (valido) setFase("wizard");
+    }
+
+    if (fase === "wizard") {
+        return (
+            <Wizard
+                form={form}
+                onVoltarInicio={() => setFase("inicial")}
+                onConcluir={form.handleSubmit(onSubmit)}
+            />
+        );
+    }
 
     return(
         <div className='min-h-screen flex items-center justify-center p-4'>
@@ -53,11 +112,11 @@ export function DietForm({onSubmit}: DietFormProps){
                             <Utensils className='w-14 h-14 text-green-500' />
                         </div>
                         <h1 className='text-3xl font-bold text-green-500 mb-2'>Gerador de Dietas</h1>
-                        <p className='text-gray-500 text-sm'>Preencha seus dados para gerar uma dieta personalizada</p>
+                        <p className='text-gray-500 text-sm'>Preencha os dados para gerar uma dieta</p>
                     </div>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+                    <form onSubmit={(e) => { e.preventDefault(); handleContinuar(); }} className='space-y-6'>
 
                         {/* SEÇÃO DADOS PESSOAIS */}
                         <div className='space-y-4'>
@@ -105,6 +164,31 @@ export function DietForm({onSubmit}: DietFormProps){
                                  )}
                                  />
                             </div>
+
+                            {/* EMAIL (opcional) — diferencia clientes com o mesmo nome e é o
+                                destino do "enviar por email" do PDF no histórico. */}
+                            <FormField
+                             control={form.control}
+                             name="email"
+                             render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Email</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                          {...field}
+                                          value={field.value ?? ""}
+                                          type='email'
+                                          required
+                                          placeholder='cliente@exemplo.com'
+                                        />
+                                    </FormControl>
+                                    <p className='text-xs text-gray-400'>
+                                        Diferencia clientes com o mesmo nome e permite enviar o PDF da dieta por email depois.
+                                    </p>
+                                    <FormMessage />
+                                </FormItem>
+                             )}
+                             />
 
                             {/* CAMPOS ALTURA, PESO E SEXO */}
                             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -158,7 +242,7 @@ export function DietForm({onSubmit}: DietFormProps){
                                         <FormLabel>Sexo</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            value={field.value}>
+                                            value={field.value ?? ""}>
                                             <FormControl>
                                                 <SelectTrigger className='w-full'>
                                                     <SelectValue placeholder="Selecione o sexo" />
@@ -175,6 +259,47 @@ export function DietForm({onSubmit}: DietFormProps){
                                  )}
                                  />
                             </div>
+
+                            <FormField
+                             control={form.control}
+                             name="foto_antes"
+                             render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Foto atual (opcional)</FormLabel>
+                                    <FormControl>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            disabled={carregandoFoto}
+                                            className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-input file:bg-white file:text-sm file:cursor-pointer cursor-pointer disabled:opacity-60"
+                                            onChange={async (e) => {
+                                                const arquivo = e.target.files?.[0];
+                                                if (!arquivo) return;
+                                                setCarregandoFoto(true);
+                                                try {
+                                                    const { redimensionarParaBase64 } = await import("@/lib/image");
+                                                    field.onChange(await redimensionarParaBase64(arquivo));
+                                                } finally {
+                                                    setCarregandoFoto(false);
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
+                                    <p className='text-xs text-gray-400'>
+                                        Guardada como referência &ldquo;antes&rdquo; para comparar com o resultado no futuro. Só é guardada na primeira dieta gerada para este cliente.
+                                    </p>
+                                    {field.value && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={field.value}
+                                            alt="Pré-visualização da foto atual"
+                                            className='mt-1 h-20 w-20 rounded-md object-cover border border-border'
+                                        />
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+                             )}
+                             />
                         </div>
 
                         {/* SEÇÃO ATIVIDADE E OBJETIVOS */}
@@ -192,7 +317,7 @@ export function DietForm({onSubmit}: DietFormProps){
                                         <FormLabel>Nível de Atividade</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            value={field.value}>
+                                            value={field.value ?? ""}>
                                             <FormControl>
                                                 <SelectTrigger className='w-full'>
                                                     <SelectValue placeholder="Selecione o nível de atividade" />
@@ -201,6 +326,7 @@ export function DietForm({onSubmit}: DietFormProps){
 
                                             <SelectContent>
                                                 <SelectItem value="sedentario">Sedentário</SelectItem>
+                                                <SelectItem value="levemente_ativo">Levemente ativo</SelectItem>
                                                 <SelectItem value="2x_semana">2x por semana</SelectItem>
                                                 <SelectItem value="4x_semana">4x por semana</SelectItem>
                                             </SelectContent>
@@ -218,7 +344,7 @@ export function DietForm({onSubmit}: DietFormProps){
                                         <FormLabel>Objetivo</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            value={field.value}
+                                            value={field.value ?? ""}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className='w-full'>
@@ -262,11 +388,62 @@ export function DietForm({onSubmit}: DietFormProps){
                                 </FormItem>
                              )}
                              />
+
+                            {/* CAMPOS OPCIONAIS: DÉFICE / SUPERÁVIT CALÓRICO */}
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                <FormField
+                                 control={form.control}
+                                 name="deficit_calorico"
+                                 render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Défice calórico desejado (opcional)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                            type='number'
+                                            step="any"
+                                              {...form.register("deficit_calorico", {
+                                                setValueAs: (v) => v === "" ? undefined : Number(v),
+                                              })}
+                                              placeholder='Ex: 300 kcal abaixo do gasto'
+                                            />
+                                        </FormControl>
+                                        <p className='text-xs text-gray-400'>
+                                            Para perda de peso. Deixe em branco se não tiver um valor em mente.
+                                        </p>
+                                        <FormMessage />
+                                    </FormItem>
+                                 )}
+                                 />
+
+                                <FormField
+                                 control={form.control}
+                                 name="superavit_calorico"
+                                 render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Superávit calórico desejado (opcional)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                            type='number'
+                                            step="any"
+                                              {...form.register("superavit_calorico", {
+                                                setValueAs: (v) => v === "" ? undefined : Number(v),
+                                              })}
+                                              placeholder='Ex: 300 kcal acima do gasto'
+                                            />
+                                        </FormControl>
+                                        <p className='text-xs text-gray-400'>
+                                            Para hipertrofia. Deixe em branco se não tiver um valor em mente.
+                                        </p>
+                                        <FormMessage />
+                                    </FormItem>
+                                 )}
+                                 />
+                            </div>
                         </div>
 
                         <Button type="submit" className='w-full mt-2 hover:opacity-90 cursor-pointer gap-2'>
                             <Sparkles className='w-4 h-4' />
-                            Gerar Minha Dieta Personalizada
+                            Continuar
                         </Button>
 
                     </form>

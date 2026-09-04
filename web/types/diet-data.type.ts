@@ -1,10 +1,9 @@
-export interface DietData {
-  nome: string;
-  idade: number;
-  altura_cm: number;
-  peso_kg: number;
-  sexo: "masculino" | "feminino";
-  nivel_atividade: "sedentario" | "2x_semana" | "4x_semana";
-  objetivo: "perda_de_peso" | "hipertrofia" | "manter_massa_muscular";
-  calorias_gasto_diario?: number;
-}
+import { z } from "zod";
+import { diaSemanaSchema, dietWizardSchema, perfilAvancadoSchema } from "@/app/_components/wizard/schema";
+
+// Todos os tipos abaixo derivam diretamente do schema Zod usado pelo
+// próprio formulário (web/app/_components/wizard/schema.ts), para nunca
+// haver divergência entre a validação e os tipos usados no resto da app.
+export type DiaSemana = z.infer<typeof diaSemanaSchema>;
+export type PerfilAvancado = z.infer<typeof perfilAvancadoSchema>;
+export type DietData = z.infer<typeof dietWizardSchema>;
