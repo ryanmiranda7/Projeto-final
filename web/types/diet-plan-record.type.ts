@@ -18,6 +18,9 @@ export interface DietPlanRecord {
   resultado: string | null;
   historico_edicoes: { pedido: string; data: string }[] | null;
   status: "gerando" | "concluido" | "erro";
+  // Fica true assim que a dieta é baixada em PDF ou enviada por email —
+  // a partir daí não pode mais ser apagada (nem o backend deixa).
+  protegido_contra_exclusao: boolean;
   createdAt: string;
   updatedAt: string;
 }

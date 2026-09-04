@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { CheckCircle2, ChevronDown, ChevronUp, Download, Loader, Mail, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Download, Loader, Lock as LockIcon, Mail, Pencil, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DietPlanRecord } from "@/types/diet-plan-record.type";
@@ -161,6 +161,15 @@ export function PlanCard({ plan, isExpanded, onToggle, onDeleted, onUpdated, ema
     try {
       const { doc, nomeArquivo } = await gerarDocumento();
       doc.save(nomeArquivo);
+
+      // Uma vez baixada, fica protegida contra exclusão PARA SEMPRE — não
+      // é um bloqueio só enquanto gerandoPdf está true (ver botão Apagar
+      // abaixo). O backend também recusa o DELETE depois disto, não é só
+      // o botão escondido aqui.
+      const response = await fetch(`${API_URL}/plans/${plan.id}/marcar-protegido`, { method: "POST" });
+      if (response.ok) {
+        onUpdated(await response.json());
+      }
     } catch {
       setErroPdf("Não foi possível gerar o PDF. Tente novamente.");
     } finally {
@@ -188,6 +197,8 @@ export function PlanCard({ plan, isExpanded, onToggle, onDeleted, onUpdated, ema
         throw new Error(corpo?.details || "Falha ao enviar");
       }
 
+      const corpo: { plan: DietPlanRecord } = await response.json();
+      onUpdated(corpo.plan);
       setEmailEnviado(true);
     } catch (err) {
       setErroEmail(err instanceof Error ? err.message : "Não foi possível enviar o email. Tente novamente.");
@@ -329,16 +340,27 @@ export function PlanCard({ plan, isExpanded, onToggle, onDeleted, onUpdated, ema
                 size="sm"
                 className="cursor-pointer gap-1.5"
                 onClick={apagar}
-                // Bloqueado enquanto o PDF está a ser gerado/enviado, para
-                // não apagar a dieta a meio desses processos.
-                disabled={apagando || gerandoPdf || enviandoEmail}
+                // Bloqueado enquanto o PDF está a ser gerado/enviado (para
+                // não apagar a meio desses processos) e PARA SEMPRE depois
+                // de a dieta já ter sido baixada ou enviada por email — o
+                // backend também recusa o DELETE nesse caso, não é só o
+                // botão escondido aqui.
+                disabled={apagando || gerandoPdf || enviandoEmail || plan.protegido_contra_exclusao}
                 title={
-                  gerandoPdf || enviandoEmail
+                  plan.protegido_contra_exclusao
+                    ? "Esta dieta já foi baixada ou enviada por email e não pode ser apagada"
+                    : gerandoPdf || enviandoEmail
                     ? "Aguarde o PDF terminar para apagar"
                     : undefined
                 }
               >
-                {apagando ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {apagando ? (
+                  <Loader className="w-3.5 h-3.5 animate-spin" />
+                ) : plan.protegido_contra_exclusao ? (
+                  <LockIcon className="w-3.5 h-3.5" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
                 Apagar
               </Button>
               {erroPdf && <p className="text-xs text-red-600 basis-full">{erroPdf}</p>}
