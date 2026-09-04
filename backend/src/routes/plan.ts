@@ -310,7 +310,14 @@ export async function planRoutes(app: FastifyInstance) {
                 pdfBase64: parse.data.pdfBase64,
                 nomeArquivo: parse.data.nomeArquivo,
             });
-            return reply.send({ enviado: true, destinatario: plan.cliente.email });
+            // Uma vez enviada, fica protegida contra exclusão PARA SEMPRE
+            // (ver DELETE abaixo) — não é um bloqueio temporário.
+            const atualizado = await prisma.dietPlan.update({
+                where: { id: plan.id },
+                data: { protegido_contra_exclusao: true },
+                include: { cliente: true },
+            });
+            return reply.send({ enviado: true, destinatario: plan.cliente.email, plan: flattenPlan(atualizado) });
         } catch (err: any) {
             request.log.error(err);
             return reply.status(502).send({
@@ -320,16 +327,45 @@ export async function planRoutes(app: FastifyInstance) {
         }
     });
 
-    // Apaga uma dieta gerada.
-    app.delete("/plans/:id", async (request, reply) => {
+    // O PDF é gerado inteiramente no browser (ver web/lib/diet-pdf.ts) — não
+    // há nenhum pedido ao backend só para "Baixar PDF". O frontend chama
+    // isto logo a seguir a `doc.save()` terminar com sucesso, só para
+    // marcar a dieta como protegida contra exclusão para sempre (mesma
+    // regra do envio por email, ver acima).
+    app.post("/plans/:id/marcar-protegido", async (request, reply) => {
         const { id } = request.params as { id: string };
 
         try {
-            await prisma.dietPlan.delete({ where: { id: Number(id) } });
+            const atualizado = await prisma.dietPlan.update({
+                where: { id: Number(id) },
+                data: { protegido_contra_exclusao: true },
+                include: { cliente: true },
+            });
+            return reply.send(flattenPlan(atualizado));
         } catch {
             return reply.status(404).send({ error: "NotFound" });
         }
+    });
 
+    // Apaga uma dieta gerada — recusado se já foi baixada em PDF ou
+    // enviada por email (ver protegido_contra_exclusao). A verificação
+    // fica aqui, não só escondendo o botão no frontend, para ser mesmo
+    // impossível apagar por essa via, não só "difícil".
+    app.delete("/plans/:id", async (request, reply) => {
+        const { id } = request.params as { id: string };
+
+        const plan = await prisma.dietPlan.findUnique({ where: { id: Number(id) } });
+        if (!plan) {
+            return reply.status(404).send({ error: "NotFound" });
+        }
+        if (plan.protegido_contra_exclusao) {
+            return reply.status(403).send({
+                error: "ProtegidoContraExclusao",
+                details: "Esta dieta já foi baixada em PDF ou enviada por email e não pode ser apagada.",
+            });
+        }
+
+        await prisma.dietPlan.delete({ where: { id: Number(id) } });
         return reply.status(204).send();
     });
 }
