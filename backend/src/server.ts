@@ -1,6 +1,7 @@
 import cors from '@fastify/cors'
 import Fastify from "fastify";
 import { planRoutes } from "./routes/plan";
+import { clientesRoutes } from "./routes/clientes";
 
 const app = Fastify({
     logger: true,
@@ -8,7 +9,10 @@ const app = Fastify({
 
 await app.register(cors, {
     origin: "*",
-    methods: ["GET", "POST"],
+    // PATCH (editar dieta) e DELETE (apagar dieta) tinham ficado de fora
+    // aqui — o browser bloqueava esses pedidos no preflight CORS antes
+    // sequer de chegarem ao backend (parecia "backend não está a correr").
+    methods: ["GET", "POST", "PATCH", "DELETE"],
 });
 
 app.get("/teste", (req, res) => {
@@ -16,6 +20,7 @@ app.get("/teste", (req, res) => {
 });
 
 app.register(planRoutes);
+app.register(clientesRoutes);
 
 app.listen({ port: Number(process.env.PORT) || 3333, host: "0.0.0.0" })
     .then(() => { 

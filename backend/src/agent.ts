@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { buildDocsSystemPrompt, buildSystemPrompt, buildUserPrompt } from './prompt'
+import { buildDocsSystemPrompt, buildEditRequestPrompt, buildSystemPrompt, buildTranslateRequestPrompt, buildUserPrompt } from './prompt'
 import type { DietPlanRequest } from './types'
 import fs from 'fs'
 
@@ -30,4 +30,44 @@ export async function* generateDietPlan(input: DietPlanRequest) {
 
     return "Ok";
 
+}
+
+// Aplica um pedido de alteração (ex.: "troca o frango do dia 3 por peixe")
+// a um plano já gerado. Reaproveita a mesma conversa original (contexto +
+// resposta anterior) para que a IA saiba exatamente o que já tinha
+// devolvido, e pede-lhe para reescrever o plano completo aplicando só a
+// alteração pedida. Chamada não-streaming: é uma edição pontual, não
+// precisa de aparecer a "escrever" em tempo real.
+export async function editDietPlan(input: DietPlanRequest, resultadoAtual: string, pedido: string) {
+    const diretrizes = fs.readFileSync("knowledge/diretrizes.md", "utf-8")
+
+    const completion = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+            { role: "system", content: buildSystemPrompt() },
+            { role: "system", content: buildDocsSystemPrompt(diretrizes) },
+            { role: "user", content: buildUserPrompt(input) },
+            { role: "assistant", content: resultadoAtual },
+            { role: "user", content: buildEditRequestPrompt(pedido) },
+        ],
+        temperature: 0.4,
+    });
+
+    return completion.choices[0]?.message?.content ?? "";
+}
+
+// Traduz um plano já gerado para PDF em outro idioma. Não reaproveita o
+// contexto original (não é preciso — é só tradução de texto) e não é
+// guardado: serve apenas para a exportação em PDF nesse idioma.
+export async function translateDietPlan(resultado: string, idioma: "pt-PT" | "en" | "es") {
+    const completion = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+            { role: "system", content: buildTranslateRequestPrompt(idioma) },
+            { role: "user", content: resultado },
+        ],
+        temperature: 0.2,
+    });
+
+    return completion.choices[0]?.message?.content ?? resultado;
 }
