@@ -89,6 +89,12 @@ model DietPlan {
 
   status String @default("gerando") // "gerando" | "concluido" | "erro"
 
+  // Uma vez baixada em PDF ou enviada por email, a dieta fica protegida
+  // contra exclusão PARA SEMPRE (não é um bloqueio temporário enquanto o
+  // PDF gera — o DELETE /plans/:id também recusa o pedido no backend,
+  // não é só o botão escondido no frontend).
+  protegido_contra_exclusao Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
