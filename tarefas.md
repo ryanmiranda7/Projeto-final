@@ -53,3 +53,13 @@ selecione um filtro por datas.
 preciso que o email seja obrigatório no formulário.
 
 com base em todo esse trabalho, esse trabalho é de três integrantes, o Ryan Miranda ficou responsavel pelo backend e IA, o João Ferreira ficou responsavel pelo banco de dados e o Paulo Calado ficou responsavel pelo front end. Preciso que você analise e me diga exatamente os commits que cada um tem que fazer e quais os arquivos que cada um tem que subir.
+
+preciso que nas perguntas "Vamos estimar sua gordura corporal atual" "Selecione sua meta de gordura corporal/físico" preciso que ao lado das perguntas tenha um botão que abra esse pdf que está aqui anexado. em seguida acrescente em concluido.md o que você já fez e crie o commit que é preciso fazer, quem precisa fazer e quais ficheiro é preciso adicionar no commit.
+
+temos um problema. fiz um teste, gerei a dieta para um cliente e após gerar essa dieta enviei-lhe a dieta por email, em seguida pude clicar no botão apagar, para apagar a dieta desse cliente e o site me permitiu apagar. Porém eu já havia pedido antes para quando o pdf fosse enviado ou baixado que deveria bloquear automaticamente a opção de apagar essa dieta para sempre, sendo assim deveria ser impossivel apagar essa dieta após ser baixado ou enviado por email. em seguida acrescente em concluido.md o que você já fez e crie o commit que é preciso fazer, quem precisa fazer e quais ficheiro é preciso adicionar no commit. não faça o que já tenha feito aqui das tarefas.
+
+- arrume um erro que eu encontrei na parte dos intervalos de datas, não deve aparecer nenhuma  dieta no dia anterior da dieta mais antiga gerada.
+
+- preciso que você adicione mais 5 testes, sem quebrar o código nem nada do tipo, adicione 5 dietas de 5 "pessoas" diferentes, como se fosse pessoas reais, em 3 use imagens, pode colocar essa imagem presente na pasta apresentacao como exemplo do resultado de antes da pessoa. Coloque um teste de uma dessas pessoa como se tivesse sido feita no dia 6 de setembro, duas feitas no dia 7 de setembro e 3 dia 8 de setembro.
+
+- após essas edições, faça os commits dos devidos responsaveis e suba eles para o github.  
