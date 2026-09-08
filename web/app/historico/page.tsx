@@ -76,8 +76,15 @@ function HistoricoContent() {
   const plansVisiveis = plans.filter((p) => {
     if (clienteFiltro && p.nome !== clienteFiltro) return false;
     const geradaEm = new Date(p.createdAt);
-    if (dataInicio && geradaEm < new Date(`${dataInicio}T00:00:00`)) return false;
-    if (dataFim && geradaEm > new Date(`${dataFim}T23:59:59`)) return false;
+    // "Z" (UTC) explícito nos dois limites — as datas geradas (createdAt)
+    // são sempre guardadas e comparadas em UTC/GMT (fuso do servidor). Sem
+    // o "Z", "${dataInicio}T00:00:00" era interpretado na hora LOCAL do
+    // browser; num fuso horário à frente do GMT (ex.: Portugal no verão,
+    // UTC+1), a meia-noite local de um dia corresponde às 23:00 UTC do dia
+    // ANTERIOR, deixando entrar no filtro uma dieta gerada nesse dia
+    // anterior — exatamente o bug reportado.
+    if (dataInicio && geradaEm < new Date(`${dataInicio}T00:00:00Z`)) return false;
+    if (dataFim && geradaEm > new Date(`${dataFim}T23:59:59Z`)) return false;
     return true;
   });
   const temFiltroData = !!dataInicio || !!dataFim;

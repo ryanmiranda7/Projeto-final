@@ -173,8 +173,10 @@ export default function ClientesPage() {
             if (periodo === "ano") return mesmoAno(data, agora);
             // "personalizado": sem nenhuma das duas datas preenchidas,
             // equivale a "todos".
-            if (dataInicio && data < new Date(`${dataInicio}T00:00:00`)) return false;
-            if (dataFim && data > new Date(`${dataFim}T23:59:59`)) return false;
+            // "Z" (UTC) explícito — ver a mesma correção e explicação em
+            // historico/page.tsx (o bug do "dia anterior" a aparecer no filtro).
+            if (dataInicio && data < new Date(`${dataInicio}T00:00:00Z`)) return false;
+            if (dataFim && data > new Date(`${dataFim}T23:59:59Z`)) return false;
             return true;
           })
         );
